@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tobis / music</title>
+    <link class="favicon" rel="icon" type="image/png" href="logo.png">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 60px 40px;
+            min-height: 100vh;
+            background-color: #05050d;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(30, 60, 140, 0.28) 0%, transparent 45%),
+                radial-gradient(circle at 85% 30%, rgba(93, 63, 143, 0.35) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(110, 20, 50, 0.25) 0%, transparent 50%),
+                radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px;
+            background-attachment: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* Poświata pod kursorem */
+        #cursor-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 65%);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.2s ease;
+            z-index: 9999;
+            opacity: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header z przyciskiem powrotu */
+        .header-container {
+            margin-bottom: 40px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .title {
+            font-size: 36px;
+            font-weight: 400;
+            font-style: italic;
+            font-family: Georgia, serif;
+            letter-spacing: -0.5px;
+            color: #e2e2e9;
+            margin: 0 0 8px 0;
+        }
+        .subtitle {
+            font-size: 12px;
+            color: #4a4a5a;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        /* Link powrotny */
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #d1d1e0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+            text-decoration: none;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        /* Filtry */
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+            width: 100%;
+        }
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: #8a8a98;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .filter-btn:hover, .filter-btn.active {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(140, 100, 255, 0.3);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            color: #ffffff;
+            margin: 0 0 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Pusta kategoria */
+        .empty-category-view {
+            display: none;
+            width: 100%;
+            padding: 80px 20px;
+            text-align: center;
+            font-size: 18px;
+            color: #6e6e80;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* Grid */
+        .albums-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            width: 100%;
+            margin-bottom: 60px;
+        }
+
+        /* Karta albumu */
+        .album-card {
+            background: #0b0b14;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        .album-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(140, 100, 255, 0.3);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .cover-container {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            position: relative;
+            overflow: hidden;
+            background: #12121f;
+        }
+        .album-cover {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+        .album-card:hover .album-cover {
+            transform: scale(1.05);
+        }
+
+        .spotify-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .album-card:hover .spotify-overlay {
+            opacity: 1;
+        }
+        .spotify-icon {
+            width: 42px;
+            height: 42px;
+            fill: #1DB954;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+        }
+
+        .rating-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(11, 11, 20, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffd700;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 2;
+        }
+
+        /* Klasa dla ocen poniżej 9/10 - bez żółtej gwiazdki */
+        .rating-badge.no-star {
+            color: #ffffff;
+        }
+
+        .album-info {
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .album-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 4px 0;
+            line-height: 1.2;
+        }
+        .artist-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #8a8a98;
+            margin: 0 0 16px 0;
+        }
+        .album-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 12px;
+            margin-top: auto;
+        }
+        .genre-tag {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6e6e80;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .release-year {
+            font-size: 11px;
+            color: #4a4a5a;
+            font-weight: 600;
+        }
+
+        @media (max-width: 900px) {
+            .albums-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 40px 20px;
+            }
+            .header-container {
+                flex-direction: column;
+                gap: 16px;
+            }
+            .albums-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="cursor-glow"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header-container">
+            <div>
+                <h1 class="title">music</h1>
+                <p class="subtitle">favorite albums & reviews</p>
+            </div>
+            <a href="https://tobis.cc" class="back-link">
+                ← tobis.cc
+            </a>
+        </div>
+
+        <!-- Filtry -->
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="switchCategory('all', this)">All</button>
+            <button class="filter-btn" onclick="switchCategory('pop', this)">Pop</button>
+            <button class="filter-btn" onclick="switchCategory('electronic', this)">Electronic</button>
+            <button class="filter-btn" onclick="switchCategory('alternative', this)">Alternative</button>
+            <button class="filter-btn" onclick="switchCategory('hiphop', this)">Hip-Hop</button>
+        </div>
+
+        <!-- Stan pusty po przełączeniu kategorii -->
+        <div id="empty-view" class="empty-category-view">
+            categories coming soon x
+        </div>
+
+        <!-- Zawartość główna dla "All" -->
+        <div id="main-content" style="width: 100%;">
+            <h2 class="section-title">
+                <span>Favorite albums</span>
+            </h2>
+
+            <div class="albums-grid">
+                <!-- Album 1: WOR$T GIRL IN AMERICA -->
+                <a href="https://open.spotify.com/album/5siV9C6eK0NpAqER2FfCVA" target="_blank" class="album-card">
+                    <div class="cover-container">
+                        <span class="rating-badge">★ 10/10</span>
+                        <img src="https://cdn.albumoftheyear.org/album/1460350-wort-girl-in-america_034044.jpg" alt="WOR$T GIRL IN AMERICA" class="album-cover">
+                        <div class="spotify-overlay">
+                            <svg class="spotify-icon" viewBox="0 0 24 24">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.18-.1.2-.78-.42-.18-.6.18-1.2.78-1.38 4.26-1.26 11.28-1.02 15.72 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="album-info">
+                        <h3 class="album-title">WOR$T GIRL IN AMERICA</h3>
+                        <p class="artist-name">Slayyyter</p>
+                        <div class="album-footer">
+                            <span class="genre-tag">Electronic / Rock</span>
+                            <span class="release-year">2026</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Album 2: Gag Order -->
+                <a href="https://open.spotify.com/album/5gJSC3H04ubhi6BTtdViqR" target="_blank" class="album-card">
+                    <div class="cover-container">
+                        <span class="rating-badge">★ 10/10</span>
+                        <img src="https://cdn.albumoftheyear.org/album/641363-untitled_0942.jpg" alt="Gag Order" class="album-cover">
+                        <div class="spotify-overlay">
+                            <svg class="spotify-icon" viewBox="0 0 24 24">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.18-.1.2-.78-.42-.18-.6.18-1.2.78-1.38 4.26-1.26 11.28-1.02 15.72 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="album-info">
+                        <h3 class="album-title">Gag Order</h3>
+                        <p class="artist-name">Kesha</p>
+                        <div class="album-footer">
+                            <span class="genre-tag">Alt / Electronic</span>
+                            <span class="release-year">2023</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Album 3: BRAT -->
+                <a href="https://open.spotify.com/album/2lIZef4lzdvZkiiCzvPKj7" target="_blank" class="album-card">
+                    <div class="cover-container">
+                        <span class="rating-badge">★ 9.5/10</span>
+                        <img src="https://cdn.albumoftheyear.org/album/887267-brat_141745.jpg" alt="BRAT" class="album-cover">
+                        <div class="spotify-overlay">
+                            <svg class="spotify-icon" viewBox="0 0 24 24">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.18-.1.2-.78-.42-.18-.6.18-1.2.78-1.38 4.26-1.26 11.28-1.02 15.72 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="album-info">
+                        <h3 class="album-title">BRAT</h3>
+                        <p class="artist-name">Charli xcx</p>
+                        <div class="album-footer">
+                            <span class="genre-tag">Electronic Pop</span>
+                            <span class="release-year">2023</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <h2 class="section-title">
+                <span>Recently liked albums</span>
+            </h2>
+
+            <div class="albums-grid">
+                <!-- Recently Liked Album 1: Dutch Hardcore -->
+                <a href="https://open.spotify.com/album/61o3udqQJpabwIaRfPUIih" target="_blank" class="album-card">
+                    <div class="cover-container">
+                        <span class="rating-badge no-star">7.6/10</span>
+                        <img src="https://cdn.albumoftheyear.org/album/1939755-dutch-hardcore_034401.jpg" alt="Dutch Hardcore" class="album-cover">
+                        <div class="spotify-overlay">
+                            <svg class="spotify-icon" viewBox="0 0 24 24">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.18-.1.2-.78-.42-.18-.6.18-1.2.78-1.38 4.26-1.26 11.28-1.02 15.72 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="album-info">
+                        <h3 class="album-title">Dutch Hardcore</h3>
+                        <p class="artist-name">Joost</p>
+                        <div class="album-footer">
+                            <span class="genre-tag">Gabber</span>
+                            <span class="release-year">2026</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const glow = document.getElementById('cursor-glow');
+
+        document.addEventListener('mousemove', (e) => {
+            glow.style.left = `${e.clientX}px`;
+            glow.style.top = `${e.clientY}px`;
+            glow.style.opacity = '1';
+        });
+
+        document.addEventListener('mouseleave', () => {
+            glow.style.opacity = '0';
+        });
+
+        function switchCategory(category, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const mainContent = document.getElementById('main-content');
+            const emptyView = document.getElementById('empty-view');
+
+            if (category === 'all') {
+                mainContent.style.display = 'block';
+                emptyView.style.display = 'none';
+            } else {
+                mainContent.style.display = 'none';
+                emptyView.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
